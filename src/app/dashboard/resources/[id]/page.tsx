@@ -16,33 +16,16 @@ import {
   Bookmark,
 } from "lucide-react";
 
-import "react-pdf/dist/Page/AnnotationLayer.css";
+import {
+  Document,
+  Page,
+} from "react-pdf";
 
-import { pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
 
 import "react-pdf/dist/Page/TextLayer.css";
 
-import dynamic from "next/dynamic";
-
-const Document = dynamic(
-  () =>
-    import("react-pdf").then(
-      (mod) => mod.Document
-    ),
-  { ssr: false }
-);
-
-const Page = dynamic(
-  () =>
-    import("react-pdf").then(
-      (mod) => mod.Page
-    ),
-  { ssr: false }
-);
-
-pdfjs.GlobalWorkerOptions.workerSrc =
-  `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-
+import "@/lib/pdfWorker";
 
 interface Resource {
 
@@ -331,6 +314,11 @@ if (!alreadyViewed) {
     "true"
   );
 }
+
+console.log(
+  "PDF URL:",
+  resourceData.file_url
+);
 
 // Update local state
 
@@ -668,35 +656,62 @@ setLoading(false);
 
       {resource.file_url ? (
 
-       <Document
-  file={resource.file_url}
 
-  onLoadSuccess={({ numPages }) => {
-    setNumPages(numPages);
-    setPageNumber(1);
-  }}
+        <Document
+          file={resource.file_url}
 
-  onLoadError={(err) => {
-    console.error(
-      "PDF LOAD ERROR:",
-      err
-    );
-  }}
+         onLoadSuccess={(pdf) => {
 
-  loading={
-    <div className="flex items-center justify-center py-10">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#355E3B] border-t-transparent" />
-    </div>
-  }
+  console.log(
+    "PDF Loaded:",
+    pdf
+  );
 
-  error={
-    <p className="text-center text-red-500">
-      Failed to load PDF.
-      The file may be corrupted
-      or blocked by CORS.
-    </p>
-  }
->
+  console.log(
+    "Pages:",
+    pdf.numPages
+  );
+
+  setNumPages(
+    pdf.numPages
+  );
+
+  setPageNumber(1);
+
+}}
+
+          onLoadError={(err) => {
+
+            console.error(
+              "PDF LOAD ERROR:",
+              err
+            );
+
+          }}
+
+          loading={
+
+            <div className="flex items-center justify-center py-10">
+
+  <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#355E3B] border-t-transparent" />
+
+</div>
+
+          }
+
+          error={
+
+            <p className="text-center text-red-500">
+
+              Failed to load PDF.
+              The file may be corrupted
+              or blocked by CORS.
+
+            </p>
+
+          }
+
+        >
 
           <Page
             pageNumber={pageNumber}
