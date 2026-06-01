@@ -1,0 +1,1203 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import FacultyLayout from "@/components/faculty/FacultyLayout";
+import { supabase } from "@/lib/supabase";
+import { useRouter }
+from "next/navigation";
+
+import {
+  IKUpload,
+  IKContext
+} from "imagekitio-react";
+
+import {
+  Upload,
+  Image as ImageIcon,
+} from "lucide-react";
+
+async function getOrCreateCollege(
+  collegeName: string
+) {
+  if (!collegeName) return null;
+
+  // CHECK EXISTING
+
+  const { data: existingCollege } =
+    await supabase
+      .from("colleges")
+      .select("id")
+      .ilike("name", collegeName)
+      .single();
+
+  if (existingCollege) {
+    return existingCollege.id;
+  }
+
+  // CREATE NEW
+
+  const { data: newCollege, error } =
+    await supabase
+      .from("colleges")
+      .insert([
+        {
+          name: collegeName,
+        },
+      ])
+      .select("id")
+      .single();
+
+  if (error) {
+    console.error(error);
+    return null;
+  }
+
+  return newCollege.id;
+}
+
+async function getOrCreateSubject(
+  subjectName: string,
+  collegeId?: string | null,
+  semester?: string
+) {
+
+  if (!subjectName) return null;
+
+  const semesterNumber =
+    semester
+      ? Number(
+          semester.replace(/\D/g, "")
+        )
+      : null;
+
+  // CHECK EXISTING SUBJECT
+
+  const { data: existingSubject } =
+    await supabase
+      .from("subjects")
+      .select("id")
+      .ilike(
+        "subject_name",
+        subjectName.trim()
+      )
+      .eq(
+        "college_id",
+        collegeId
+      )
+      .eq(
+        "semester",
+        semesterNumber
+      )
+      .maybeSingle();
+
+  if (existingSubject) {
+
+    return existingSubject.id;
+
+  }
+
+  // CREATE SUBJECT
+
+  const { data: newSubject, error } =
+    await supabase
+      .from("subjects")
+      .insert([
+        {
+          subject_name:
+            subjectName.trim(),
+
+          semester:
+            semesterNumber,
+
+          college_id:
+            collegeId,
+        },
+      ])
+      .select("id")
+      .single();
+
+  if (error) {
+
+    console.error(error);
+
+    return null;
+
+  }
+
+  return newSubject.id;
+}
+
+interface College {
+  id: string;
+  name: string;
+  college_code?: string;
+}
+
+interface Subject {
+  id: string;
+  subject_name: string;
+}
+
+interface Faculty {
+  id: string;
+  faculty_name: string;
+}
+
+export default function UploadPage() {
+
+  const [dragging, setDragging] =
+    useState(false);
+
+  const [loading, setLoading] =
+    useState(false);
+
+    const [pdfUploading, setPdfUploading] =
+  useState(false);
+
+const [
+  thumbnailUploading,
+  setThumbnailUploading
+] = useState(false);
+
+  // Uploaded URLs
+  const [
+    uploadedFileUrl,
+    setUploadedFileUrl
+  ] = useState("");
+
+  const [
+    uploadedThumbnailUrl,
+    setUploadedThumbnailUrl
+  ] = useState("");
+
+  // Form States
+  const [title, setTitle] =
+    useState("");
+
+  const [
+    description,
+    setDescription
+  ] = useState("");
+
+  const [tags, setTags] =
+    useState("");
+
+  const [semester, setSemester] =
+    useState("Semester 1");
+
+  const [
+    resourceType,
+    setResourceType
+  ] = useState("Notes");
+
+  // Dynamic Dropdown Data
+  const [colleges, setColleges] =
+    useState<College[]>([]);
+
+  const [subjects, setSubjects] =
+    useState<Subject[]>([]);
+
+  const [faculties, setFaculties] =
+    useState<Faculty[]>([]);
+
+  // Selected Values
+  const [
+    selectedCollege,
+    setSelectedCollege
+  ] = useState("");
+
+  const [
+    selectedSubject,
+    setSelectedSubject
+  ] = useState("");
+
+  const [
+    selectedFaculty,
+    setSelectedFaculty
+  ] = useState("");
+
+  const router =
+  useRouter();
+
+  // ImageKit Auth
+  const authenticator =
+    async () => {
+
+    try {
+
+      const response =
+        await fetch(
+          "/api/upload-auth"
+        );
+
+      if (!response.ok) {
+
+        throw new Error(
+          "Authentication failed"
+        );
+      }
+
+      return await response.json();
+
+    } catch (error) {
+
+      console.error(error);
+
+      throw new Error(
+        "Authentication failed"
+      );
+    }
+  };
+
+  // Fetch Dynamic Data
+  useEffect(() => {
+
+    const fetchData =
+      async () => {
+
+      const {
+        data: collegesData
+      } = await supabase
+        .from("colleges")
+        .select("*");
+
+      const {
+        data: subjectsData
+      } = await supabase
+        .from("subjects")
+        .select("*");
+
+      const {
+        data: facultiesData
+      } = await supabase
+        .from("faculties")
+        .select("*");
+
+      if (collegesData) {
+        setColleges(collegesData);
+      }
+
+      if (subjectsData) {
+        setSubjects(subjectsData);
+      }
+
+      if (facultiesData) {
+        setFaculties(facultiesData);
+      }
+    };
+
+    fetchData();
+
+  }, []);
+
+  useEffect(() => {
+
+  const checkAuth =
+    async () => {
+
+      const {
+        data: { session }
+      } =
+        await supabase.auth.getSession();
+
+      if (!session) {
+
+        router.replace(
+          "/login"
+        );
+      }
+    };
+
+  checkAuth();
+
+}, []);
+
+  // Upload Handler
+  const handleUpload =
+    async () => {
+
+    if (
+      !uploadedFileUrl
+    ) {
+
+      alert(
+        "Please upload file first."
+      );
+
+      return;
+    }
+
+    if (
+      !uploadedThumbnailUrl
+    ) {
+
+      alert(
+        "Please upload thumbnail."
+      );
+
+      return;
+    }
+
+    if (
+      !title ||
+      !selectedCollege ||
+      !selectedSubject ||
+      !selectedFaculty
+    ) {
+
+      alert(
+        "Please fill all fields."
+      );
+
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+
+      const collegeId =
+  await getOrCreateCollege(
+    selectedCollege
+  );
+
+const subjectId =
+  await getOrCreateSubject(
+    selectedSubject,
+    collegeId,
+    semester
+  );
+
+  const slug =
+  `${title
+    .toLowerCase()
+    .trim()
+    .replace(
+      /[^a-z0-9\s-]/g,
+      ""
+    )
+    .replace(/\s+/g, "-")
+  }-${Date.now()}`;
+
+    const { data: duplicate } =
+  await supabase
+    .from("resources")
+    .select("id")
+    .eq("slug", slug)
+    .eq(
+      "subject_name",
+      selectedSubject
+    )
+    .eq(
+      "semester",
+      semester
+    )
+    .maybeSingle();
+
+if (duplicate) {
+
+  alert(
+    "This resource already exists."
+  );
+
+  setLoading(false);
+
+  return;
+}
+
+const normalizedTags =
+  tags
+    .split(",")
+    .map((tag) =>
+      tag.trim().toLowerCase()
+    )
+    .filter(Boolean);
+
+      const { error } =
+        await supabase
+          .from("resources")
+          .insert([
+            {
+
+              title,
+
+              slug,
+
+              description,
+
+              resource_type:
+                resourceType,
+
+              file_url:
+                uploadedFileUrl,
+
+              thumbnail_url:
+                uploadedThumbnailUrl,
+
+              downloads: 0,
+
+              rating: 0,
+
+              hash:
+                crypto.randomUUID(),
+
+              status:
+                "approved",
+
+              tags: normalizedTags,
+
+              semester,
+
+              subject_id: subjectId,
+
+college_id: collegeId,
+
+uploaded_by: null,
+
+subject_name: selectedSubject,
+
+college_name: selectedCollege,
+
+faculty_name: selectedFaculty,
+
+            },
+          ]);
+
+      if (error) {
+
+  console.log(error);
+
+  alert(error.message);
+
+} else {
+
+        alert(
+          "Resource uploaded successfully!"
+        );
+
+        // Reset
+        setTitle("");
+        setDescription("");
+        setTags("");
+
+        setSemester(
+          "Semester 1"
+        );
+
+        setResourceType(
+          "Notes"
+        );
+
+        setSelectedCollege("");
+        setSelectedSubject("");
+        setSelectedFaculty("");
+
+        setUploadedFileUrl("");
+        setUploadedThumbnailUrl("");
+      }
+
+    } catch (err) {
+
+      console.log(err);
+
+      alert(
+        "Something went wrong."
+      );
+    }
+
+    setLoading(false);
+  };
+
+  return (
+
+  <IKContext
+
+    publicKey={
+      process.env
+        .NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!
+    }
+
+    urlEndpoint={
+      process.env
+        .NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT!
+    }
+
+    authenticator={authenticator}
+  >
+
+    <FacultyLayout>
+
+      <main className="min-h-screen bg-[#DCE3CC] p-6 md:p-10">
+
+        <div className="mb-10">
+
+          <h1 className="text-4xl font-bold text-[#1F2937]">
+            Upload Resource
+          </h1>
+
+          <p className="mt-2 text-gray-600">
+            Share notes, PDFs and academic resources.
+          </p>
+
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-3">
+
+          {/* LEFT */}
+          <div className="space-y-6 lg:col-span-2">
+
+            {/* FILE UPLOAD */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+
+              onDragLeave={() =>
+                setDragging(false)
+              }
+
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+              }}
+
+              className={`rounded-3xl border-2 border-dashed p-10 text-center transition ${
+                dragging
+                  ? "border-[#355E3B] bg-[#E7F0E8]"
+                  : "border-gray-300 bg-white"
+              }`}
+            >
+
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#E7F0E8]">
+
+                <Upload className="h-10 w-10 text-[#355E3B]" />
+
+              </div>
+
+              <h2 className="mt-6 text-2xl font-semibold">
+
+                Upload PDF Resource
+
+              </h2>
+
+              <p className="mt-2 text-gray-500">
+
+                Upload PDFs, notes and question papers.
+
+              </p>
+<div className="mt-6">
+
+  <IKUpload
+
+    id="pdf-upload"
+
+    style={{ display: "none" }}
+
+    fileName="resource-file.pdf"
+
+    useUniqueFileName={true}
+
+    folder="/knowledgeforest/resources"
+
+    accept=".pdf"
+
+    authenticator={authenticator}
+
+    validateFile={(file: File) => {
+
+      if (
+  file.type !==
+  "application/pdf"
+) {
+
+  alert(
+    "Only PDF files allowed."
+  );
+
+  return false;
+}
+
+  if (
+    file.size >
+    20 * 1024 * 1024
+  ) {
+
+    alert(
+      "PDF size must be below 20MB"
+    );
+
+    return false;
+  }
+
+  return true;
+}}
+
+    onUploadStart={() => {
+
+      setPdfUploading(true);
+
+    }}
+
+    onSuccess={(res: any) => {
+
+      console.log(res);
+
+      setUploadedFileUrl(
+        res.url
+      );
+
+      setPdfUploading(false);
+
+      alert(
+        "PDF uploaded successfully!"
+      );
+
+    }}
+
+    onError={(err: any) => {
+
+      setPdfUploading(false);
+
+      console.log(err);
+
+      setPdfUploading(false);
+
+      alert(
+        "PDF upload failed."
+      );
+    }}
+
+  />
+
+  <button
+  type="button"
+  onClick={() => {
+
+    const input =
+      document.getElementById(
+        "pdf-upload"
+      ) as HTMLElement;
+
+    input?.click();
+
+  }}
+  className="cursor-pointer rounded-2xl bg-[#355E3B] px-6 py-3 font-semibold text-white"
+>
+
+  {pdfUploading
+    ? "Uploading..."
+    : "Upload PDF"}
+
+</button>
+
+  {uploadedFileUrl && (
+
+    <div className="mt-4">
+
+      <p className="text-sm font-semibold text-green-700">
+
+        PDF Uploaded Successfully
+
+      </p>
+
+      <button
+        type="button"
+
+        onClick={() =>
+          setUploadedFileUrl("")
+        }
+        className="mt-2 rounded-xl bg-red-500 px-4 py-2 text-white"
+      >
+
+        Remove PDF
+
+      </button>
+
+    </div>
+  )}
+
+</div>
+
+            </div>
+
+            {/* FORM */}
+            <div className="rounded-3xl bg-white p-8 shadow-sm">
+
+              <div className="grid gap-6 md:grid-cols-2">
+
+                <div className="md:col-span-2">
+
+                  <label className="mb-2 block text-sm font-semibold">
+                    Resource Title
+                  </label>
+
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) =>
+                      setTitle(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Enter title"
+                    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+                  />
+                </div>
+
+                {/* Subject */}
+                <div>
+
+                  <label className="mb-2 block text-sm font-semibold">
+
+                    Subject
+
+                  </label>
+
+                  <input
+                    list="subjects-list"
+                    value={selectedSubject}
+                    onChange={(e) =>
+                      setSelectedSubject(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Select subject"
+                    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+                  />
+
+                  <datalist id="subjects-list">
+
+                    {subjects.map((subject) => (
+
+                      <option
+                        key={subject.id}
+                        value={subject.subject_name}
+                      />
+                    ))}
+
+                  </datalist>
+
+                </div>
+
+                {/* College */}
+                <div>
+
+                  <label className="mb-2 block text-sm font-semibold">
+
+                    College
+
+                  </label>
+
+                  <input
+                    list="colleges-list"
+                    value={selectedCollege}
+                    onChange={(e) =>
+                      setSelectedCollege(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Select college"
+                    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+                  />
+
+                  <datalist id="colleges-list">
+
+                    {colleges.map((college) => (
+
+                      <option
+                        key={college.id}
+                        value={college.name}
+                      />
+                    ))}
+
+                  </datalist>
+
+                </div>
+
+                {/* Faculty */}
+                <div>
+
+                  <label className="mb-2 block text-sm font-semibold">
+
+                    Faculty
+
+                  </label>
+
+                  <input
+                    list="faculties-list"
+                    value={selectedFaculty}
+                    onChange={(e) =>
+                      setSelectedFaculty(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Select faculty"
+                    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+                  />
+
+                  <datalist id="faculties-list">
+
+                    {faculties.map((faculty) => (
+
+                      <option
+                        key={faculty.id}
+                        value={faculty.faculty_name}
+                      />
+                    ))}
+
+                  </datalist>
+
+                </div>
+
+                {/* Semester */}
+                <div>
+
+                  <label className="mb-2 block text-sm font-semibold">
+
+                    Semester
+
+                  </label>
+
+                  <select
+                    value={semester}
+                    onChange={(e) =>
+                      setSemester(
+                        e.target.value
+                      )
+                    }
+                    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+                  >
+
+                    <option>Semester 1</option>
+                    <option>Semester 2</option>
+                    <option>Semester 3</option>
+                    <option>Semester 4</option>
+                    <option>Semester 5</option>
+                    <option>Semester 6</option>
+                    <option>Semester 7</option>
+                    <option>Semester 8</option>
+
+                  </select>
+
+                </div>
+
+                {/* Resource Type */}
+                <div className="md:col-span-2">
+
+                  <label className="mb-2 block text-sm font-semibold">
+
+                    Resource Type
+
+                  </label>
+
+                  <select
+                    value={resourceType}
+                    onChange={(e) =>
+                      setResourceType(
+                        e.target.value
+                      )
+                    }
+                    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+                  >
+
+                    <option>Notes</option>
+                    <option>Question Paper</option>
+                    <option>Lab Manual</option>
+                    <option>Assignment</option>
+                    <option>Presentation</option>
+
+                  </select>
+
+                </div>
+
+                {/* Tags */}
+                <div className="md:col-span-2">
+
+                  <label className="mb-2 block text-sm font-semibold">
+
+                    Tags
+
+                  </label>
+
+                  <input
+                    type="text"
+                    value={tags}
+                    onChange={(e) =>
+                      setTags(
+                        e.target.value
+                      )
+                    }
+                    placeholder="dbms, os, java"
+                    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+                  />
+
+                </div>
+
+                {/* Description */}
+                <div className="md:col-span-2">
+
+                  <label className="mb-2 block text-sm font-semibold">
+
+                    Description
+
+                  </label>
+
+                  <textarea
+                    rows={5}
+                    value={description}
+                    onChange={(e) =>
+                      setDescription(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Write description..."
+                    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+                  />
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* RIGHT */}
+          <div className="space-y-6">
+
+            {/* THUMBNAIL */}
+            <div className="rounded-3xl bg-white p-6 shadow-sm">
+
+              <h2 className="text-xl font-semibold">
+
+                Thumbnail
+
+              </h2>
+
+              <div className="mt-6 rounded-2xl border-2 border-dashed border-gray-300 bg-[#F8FAF5] p-4">
+
+                {uploadedThumbnailUrl ? (
+
+                  <img
+                    src={uploadedThumbnailUrl}
+                    alt="Thumbnail"
+                    className="h-56 w-full rounded-2xl object-cover"
+                  />
+
+                ) : (
+
+                  <div className="flex h-56 items-center justify-center">
+
+                    <div className="text-center">
+
+                      <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+
+                      <p className="mt-3 text-sm text-gray-500">
+
+                        Upload preview image
+
+                      </p>
+
+                    </div>
+
+                  </div>
+                )}
+
+                <div className="mt-4">
+
+  <IKUpload
+
+    id="thumbnail-upload"
+
+   style={{ display: "none" }}
+
+    fileName="thumbnail-image.jpg"
+
+    useUniqueFileName={true}
+
+    folder="/knowledgeforest/thumbnails"
+
+    accept=".jpg,.jpeg,.png,.webp"
+
+    authenticator={authenticator}
+
+    validateFile={(file: File) => {
+
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/jpg"
+  ];
+
+  if (
+    !allowedTypes.includes(
+      file.type
+    )
+  ) {
+
+    alert(
+      "Only JPG, PNG, and WEBP images are allowed."
+    );
+
+    return false;
+  }
+
+  if (
+    file.size >
+    5 * 1024 * 1024
+  ) {
+
+    alert(
+      "Thumbnail size must be below 5MB"
+    );
+
+    return false;
+  }
+
+  return true;
+}}
+
+    onUploadStart={() => {
+
+      setThumbnailUploading(true);
+
+    }}
+
+    onSuccess={(res: any) => {
+
+      console.log(res);
+
+      setUploadedThumbnailUrl(
+        res.url
+      );
+
+      setThumbnailUploading(false);
+
+      alert(
+        "Thumbnail uploaded successfully!"
+      );
+
+    }}
+
+    onError={(err: any) => {
+
+      console.log(err);
+
+      setThumbnailUploading(false);
+
+      alert(
+        "Thumbnail upload failed."
+      );
+    }}
+
+  />
+
+  <button
+    type="button"
+
+    onClick={() => {
+
+      const input =
+        document.getElementById(
+          "thumbnail-upload"
+        ) as HTMLElement;
+
+      input?.click();
+
+    }}
+
+    className="cursor-pointer rounded-2xl bg-[#355E3B] px-6 py-3 font-semibold text-white"
+  >
+
+    {thumbnailUploading
+      ? "Uploading..."
+      : "Upload Thumbnail"}
+
+  </button>
+
+  {uploadedThumbnailUrl && (
+
+    <div className="mt-4">
+
+      <button
+         type="button"
+
+        onClick={() =>
+          setUploadedThumbnailUrl("")
+        }
+        className="rounded-xl bg-red-500 px-4 py-2 text-white"
+      >
+
+        Remove Thumbnail
+
+      </button>
+
+    </div>
+  )}
+
+</div>
+
+
+              </div>
+
+            </div>
+
+            {/* Upload Tips */}
+            <div className="rounded-3xl bg-white p-6 shadow-sm">
+
+              <h2 className="text-xl font-semibold">
+
+                Upload Tips
+
+              </h2>
+
+              <ul className="mt-4 space-y-3 text-sm text-gray-600">
+
+                <li>
+                  • Upload readable PDFs.
+                </li>
+
+                <li>
+                  • Use proper titles.
+                </li>
+
+                <li>
+                  • Add useful tags.
+                </li>
+
+                <li>
+                  • Avoid duplicates.
+                </li>
+
+              </ul>
+
+            </div>
+
+            {/* Upload Button */}
+            <button
+              onClick={handleUpload}
+              disabled={loading}
+              className="w-full rounded-2xl bg-[#355E3B] py-4 text-lg font-semibold text-white transition hover:scale-[1.02]"
+            >
+
+              {loading
+                ? "Uploading..."
+                : "Upload Resource"}
+
+            </button>
+
+          </div>
+
+        </div>
+
+      </main>
+
+    </FacultyLayout>
+
+</IKContext>
+
+  );
+}

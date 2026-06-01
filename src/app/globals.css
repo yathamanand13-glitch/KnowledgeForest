@@ -1,26 +1,49 @@
 @import "tailwindcss";
 
+@import "react-pdf/dist/Page/TextLayer.css";
+@import "react-pdf/dist/Page/AnnotationLayer.css";
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #dce3cc;
+  --foreground: #1f2937;
+
+  --card: #f5f5ef;
+
+  --primary: #355e3b;
+  --primary-hover: #2d4f32;
+
+  --secondary-text: #4b5563;
+
+  --border: #c7d0b6;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+
+  --card: #1e293b;
+
+  --primary: #4c7a52;
+  --primary-hover: #355e3b;
+
+  --secondary-text: #cbd5e1;
+
+  --border: #334155;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition:
+    background 0.3s ease,
+    color 0.3s ease;
+}
+
+button {
+  cursor: pointer;
 }
