@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import AppLayout from "@/components/AppLayout";
+import { supabase } from "@/lib/supabase";
 
 import {
   TrendingUp,
@@ -11,49 +13,99 @@ import {
   Star,
 } from "lucide-react";
 
-const trendingResources = [
-  {
-    title: "DBMS Complete Notes",
-    downloads: "12.4K",
-    rating: "5.0",
-  },
-
-  {
-    title: "OS Important Questions",
-    downloads: "9.8K",
-    rating: "4.9",
-  },
-
-  {
-    title: "CN Quick Revision PDF",
-    downloads: "8.6K",
-    rating: "4.8",
-  },
-];
-
-const topSubjects = [
-  "DBMS",
-  "Operating Systems",
-  "Computer Networks",
-  "Data Structures",
-  "Cloud Computing",
-];
-
-const topColleges = [
-  "JNTUH",
-  "VTU",
-  "OU",
-  "IITH",
-  "BITS",
-];
-
-const topFaculties = [
-  "Dr. Rajesh Kumar",
-  "Prof. Ananya Rao",
-  "Dr. Kiran Patel",
-];
-
 export default function TrendingPage() {
+
+  const [trendingResources, setTrendingResources] = useState<any[]>([]);
+const [topSubjects, setTopSubjects] = useState<any[]>([]);
+const [topColleges, setTopColleges] = useState<any[]>([]);
+const [topFaculties, setTopFaculties] = useState<any[]>([]);
+
+const [stats, setStats] = useState({
+  downloads: 0,
+  resources: 0,
+  faculties: 0,
+  colleges: 0,
+});
+
+const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+  loadTrendingData();
+}, []);
+
+const loadTrendingData = async () => {
+  try {
+    const [
+      resourcesRes,
+      subjectsRes,
+      collegesRes,
+      facultiesRes,
+    ] = await Promise.all([
+      supabase
+        .from("resources")
+        .select("*")
+        .eq("status", "approved"),
+
+      supabase
+        .from("subjects")
+        .select("*"),
+
+      supabase
+        .from("colleges")
+        .select("*"),
+
+      supabase
+        .from("faculties")
+        .select("*"),
+    ]);
+
+    const resources = resourcesRes.data || [];
+    const subjects = subjectsRes.data || [];
+    const colleges = collegesRes.data || [];
+    const faculties = facultiesRes.data || [];
+
+   const sortedResources = [...resources]
+  .filter((r) => (r.rating || 0) > 0)
+  .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+  .slice(0, 6);
+
+    const totalDownloads = resources.reduce(
+      (sum, r) => sum + (r.downloads || 0),
+      0
+    );
+
+    setTrendingResources(sortedResources);
+
+    setTopSubjects(subjects.slice(0, 10));
+
+    setTopColleges(colleges.slice(0, 10));
+
+    setTopFaculties(faculties.slice(0, 6));
+
+    setStats({
+      downloads: totalDownloads,
+      resources: sortedResources.length,
+      faculties: faculties.length,
+      colleges: colleges.length,
+    });
+
+  } catch (error) {
+    console.error(error);
+  }
+
+  setLoading(false);
+};
+
+if (loading) {
+  return (
+    <AppLayout>
+      <div className="p-10 text-center">
+        Loading Trending Data...
+      </div>
+    </AppLayout>
+  );
+}
+
   return (
     <AppLayout>
       <section className="px-6 py-16">
@@ -91,7 +143,7 @@ export default function TrendingPage() {
               />
 
               <h2 className="mt-6 text-4xl font-bold">
-                120K+
+                {stats.downloads}
               </h2>
 
               <p className="mt-2 text-gray-500">
@@ -107,11 +159,11 @@ export default function TrendingPage() {
               />
 
               <h2 className="mt-6 text-4xl font-bold">
-                4.5K+
+                {stats.resources}
               </h2>
 
               <p className="mt-2 text-gray-500">
-                Academic Resources
+                Trending Resources
               </p>
             </div>
 
@@ -123,7 +175,7 @@ export default function TrendingPage() {
               />
 
               <h2 className="mt-6 text-4xl font-bold">
-                800+
+                {stats.faculties}
               </h2>
 
               <p className="mt-2 text-gray-500">
@@ -139,7 +191,7 @@ export default function TrendingPage() {
               />
 
               <h2 className="mt-6 text-4xl font-bold">
-                150+
+                {stats.colleges}
               </h2>
 
               <p className="mt-2 text-gray-500">
@@ -178,7 +230,7 @@ export default function TrendingPage() {
                       />
 
                       <span className="font-medium">
-                        {resource.rating}
+                        {Number(resource.rating || 0).toFixed(1)}
                       </span>
                     </div>
                   </div>
@@ -188,7 +240,7 @@ export default function TrendingPage() {
                   </h3>
 
                   <p className="mt-4 text-gray-500">
-                    📥 {resource.downloads} Downloads
+                    📥 {resource.downloads || 0} Downloads
                   </p>
                 </div>
               ))}
@@ -206,10 +258,10 @@ export default function TrendingPage() {
               
               {topSubjects.map((subject) => (
                 <div
-                  key={subject}
+                  key={subject.id}
                   className="rounded-full bg-white px-6 py-4 text-lg font-medium shadow-sm transition hover:shadow-lg"
                 >
-                  {subject}
+                  {subject.subject_name}
                 </div>
               ))}
             </div>
@@ -226,10 +278,10 @@ export default function TrendingPage() {
               
               {topColleges.map((college) => (
                 <div
-                  key={college}
+                  key={college.id}
                   className="rounded-full bg-white px-6 py-4 text-lg font-medium shadow-sm transition hover:shadow-lg"
                 >
-                  {college}
+                  {college.name}
                 </div>
               ))}
             </div>
@@ -246,7 +298,7 @@ export default function TrendingPage() {
               
               {topFaculties.map((faculty) => (
                 <div
-                  key={faculty}
+                  key={faculty.id}
                   className="rounded-3xl bg-white p-6 shadow-sm transition hover:-translate-y-2 hover:shadow-2xl"
                 >
                   
@@ -256,7 +308,7 @@ export default function TrendingPage() {
                   />
 
                   <h3 className="mt-6 text-2xl font-bold">
-                    {faculty}
+                    {faculty.faculty_name}
                   </h3>
 
                   <p className="mt-3 text-gray-500">

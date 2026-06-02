@@ -59,7 +59,10 @@ async function getOrCreateCollege(
 async function getOrCreateSubject(
   subjectName: string,
   collegeId?: string | null,
-  semester?: string
+  semester?: string,
+  subjectCode?: string,
+  course?: string,
+  regulation?: string
 ) {
 
   if (!subjectName) return null;
@@ -104,15 +107,18 @@ async function getOrCreateSubject(
       .from("subjects")
       .insert([
         {
-          subject_name:
-            subjectName.trim(),
+  subject_name: subjectName.trim(),
 
-          semester:
-            semesterNumber,
+  subject_code: subjectCode,
 
-          college_id:
-            collegeId,
-        },
+  course: course,
+
+  regulation: regulation,
+
+  semester: semesterNumber,
+
+  college_id: collegeId,
+},
       ])
       .select("id")
       .single();
@@ -137,6 +143,9 @@ interface College {
 interface Subject {
   id: string;
   subject_name: string;
+  subject_code?: string;
+  course?: string;
+  regulation?: string;
 }
 
 interface Faculty {
@@ -211,6 +220,12 @@ const [
     selectedSubject,
     setSelectedSubject
   ] = useState("");
+
+  const [subjectCode, setSubjectCode] = useState("");
+
+const [course, setCourse] = useState("");
+
+const [regulation, setRegulation] = useState("");
 
   const [
     selectedFaculty,
@@ -339,19 +354,22 @@ const [
       return;
     }
 
-    if (
-      !title ||
-      !selectedCollege ||
-      !selectedSubject ||
-      !selectedFaculty
-    ) {
-
-      alert(
-        "Please fill all fields."
-      );
-
-      return;
-    }
+ if (
+  !title ||
+  !selectedSubject ||
+  !selectedCollege ||
+  !selectedFaculty ||
+  !semester ||
+  !subjectCode ||
+  !course ||
+  !regulation ||
+  !resourceType
+) {
+  alert(
+    "Please fill all required (*) fields."
+  );
+  return;
+}
 
     setLoading(true);
 
@@ -366,7 +384,10 @@ const subjectId =
   await getOrCreateSubject(
     selectedSubject,
     collegeId,
-    semester
+    semester,
+    subjectCode,
+    course,
+    regulation
   );
 
   const slug =
@@ -463,8 +484,7 @@ faculty_name: selectedFaculty,
 
             },
           ]);
-
-      if (error) {
+if (error) {
 
   console.log(error);
 
@@ -472,30 +492,45 @@ faculty_name: selectedFaculty,
 
 } else {
 
-        alert(
-          "Resource uploaded successfully!"
-        );
+  // Increase college resource count
 
-        // Reset
-        setTitle("");
-        setDescription("");
-        setTags("");
+  if (collegeId) {
 
-        setSemester(
-          "Semester 1"
-        );
-
-        setResourceType(
-          "Notes"
-        );
-
-        setSelectedCollege("");
-        setSelectedSubject("");
-        setSelectedFaculty("");
-
-        setUploadedFileUrl("");
-        setUploadedThumbnailUrl("");
+    await supabase.rpc(
+      "increment_college_resource_count",
+      {
+        college_id_input: collegeId,
       }
+    );
+
+  }
+
+  alert(
+    "Resource uploaded successfully!"
+  );
+
+  // Reset
+
+  setTitle("");
+  setDescription("");
+  setTags("");
+
+  setSemester(
+    "Semester 1"
+  );
+
+  setResourceType(
+    "Notes"
+  );
+
+  setSelectedCollege("");
+  setSelectedSubject("");
+  setSelectedFaculty("");
+
+  setUploadedFileUrl("");
+  setUploadedThumbnailUrl("");
+
+}
 
     } catch (err) {
 
@@ -730,8 +765,9 @@ faculty_name: selectedFaculty,
                 <div className="md:col-span-2">
 
                   <label className="mb-2 block text-sm font-semibold">
-                    Resource Title
-                  </label>
+  Resource Title
+  <span className="text-red-500">*</span>
+</label>
 
                   <input
                     type="text"
@@ -750,10 +786,9 @@ faculty_name: selectedFaculty,
                 <div>
 
                   <label className="mb-2 block text-sm font-semibold">
-
-                    Subject
-
-                  </label>
+  Subject
+  <span className="text-red-500">*</span>
+</label>
 
                   <input
                     list="subjects-list"
@@ -781,14 +816,33 @@ faculty_name: selectedFaculty,
 
                 </div>
 
+                {/* Subject Code */}
+<div>
+
+  <label className="mb-2 block text-sm font-semibold">
+    Subject Code
+    <span className="text-red-500">*</span>
+  </label>
+
+  <input
+    type="text"
+    value={subjectCode}
+    onChange={(e) =>
+      setSubjectCode(e.target.value)
+    }
+    placeholder="DBMS301"
+    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+  />
+
+</div>
+
                 {/* College */}
                 <div>
 
                   <label className="mb-2 block text-sm font-semibold">
-
-                    College
-
-                  </label>
+  College
+  <span className="text-red-500">*</span>
+</label>
 
                   <input
                     list="colleges-list"
@@ -816,14 +870,44 @@ faculty_name: selectedFaculty,
 
                 </div>
 
+                {/* Course */}
+<div>
+
+  <label className="mb-2 block text-sm font-semibold">
+    Course
+    <span className="text-red-500">*</span>
+  </label>
+
+  <select
+    value={course}
+    onChange={(e) =>
+      setCourse(e.target.value)
+    }
+    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+  >
+
+    <option value="">
+      Select Course
+    </option>
+
+    <option value="CSE">CSE</option>
+    <option value="ECE">ECE</option>
+    <option value="EEE">EEE</option>
+    <option value="MECH">MECH</option>
+    <option value="CIVIL">CIVIL</option>
+    <option value="IT">IT</option>
+
+  </select>
+
+</div>
+
                 {/* Faculty */}
                 <div>
 
                   <label className="mb-2 block text-sm font-semibold">
-
-                    Faculty
-
-                  </label>
+  Faculty
+  <span className="text-red-500">*</span>
+</label>
 
                   <input
                     list="faculties-list"
@@ -855,10 +939,9 @@ faculty_name: selectedFaculty,
                 <div>
 
                   <label className="mb-2 block text-sm font-semibold">
-
-                    Semester
-
-                  </label>
+  Semester
+  <span className="text-red-500">*</span>
+</label>
 
                   <select
                     value={semester}
@@ -883,14 +966,33 @@ faculty_name: selectedFaculty,
 
                 </div>
 
+                {/* Regulation */}
+<div>
+
+  <label className="mb-2 block text-sm font-semibold">
+    Regulation
+    <span className="text-red-500">*</span>
+  </label>
+
+  <input
+    type="text"
+    value={regulation}
+    onChange={(e) =>
+      setRegulation(e.target.value)
+    }
+    placeholder="R23"
+    className="w-full rounded-2xl border border-gray-200 bg-[#F8FAF5] p-4 outline-none"
+  />
+
+</div>
+
                 {/* Resource Type */}
                 <div className="md:col-span-2">
 
                   <label className="mb-2 block text-sm font-semibold">
-
-                    Resource Type
-
-                  </label>
+  Resource Type
+  <span className="text-red-500">*</span>
+</label>
 
                   <select
                     value={resourceType}

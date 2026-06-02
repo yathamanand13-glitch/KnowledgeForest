@@ -22,10 +22,11 @@ import {
 import {
   Document,
   Page,
-  pdfjs,
 } from "react-pdf";
 
 import "@/lib/pdfWorker";
+
+import { getVisitorToken } from "@/lib/visitor";
 
 interface Resource {
 
@@ -56,6 +57,10 @@ interface Resource {
   faculty_name?: string;
 
   views?: number;
+
+  rating?: number;
+
+ratings_count?: number;
 }
 
 export default function ResourceDetailsPage() {
@@ -93,6 +98,18 @@ const [screenWidth, setScreenWidth] =
 
 const [bookmarked,
   setBookmarked] =
+  useState(false);
+
+  const [userRating, setUserRating] =
+  useState(0);
+
+const [averageRating, setAverageRating] =
+  useState(0);
+
+const [ratingsCount, setRatingsCount] =
+  useState(0);
+
+const [ratingLoading, setRatingLoading] =
   useState(false);
 
   useEffect(() => {
@@ -240,6 +257,124 @@ async function toggleBookmark() {
   setBookmarkLoading(false);
 }
 
+
+async function loadUserRating(
+  resourceId: string
+) {
+  const visitorToken =
+    getVisitorToken();
+
+  const { data } =
+    await supabase
+      .from("ratings")
+      .select("rating")
+      .eq(
+        "resource_id",
+        resourceId
+      )
+      .eq(
+        "visitor_token",
+        visitorToken
+      )
+      .maybeSingle();
+
+  if (data) {
+    setUserRating(data.rating);
+  }
+}
+
+async function submitRating(
+  ratingValue: number
+) {
+  if (!resource) return;
+
+  setRatingLoading(true);
+
+  const visitorToken =
+    getVisitorToken();
+
+  const { data: existing } =
+    await supabase
+      .from("ratings")
+      .select("id")
+      .eq(
+        "resource_id",
+        resource.id
+      )
+      .eq(
+        "visitor_token",
+        visitorToken
+      )
+      .maybeSingle();
+
+  if (existing) {
+    await supabase
+      .from("ratings")
+      .update({
+        rating: ratingValue,
+      })
+      .eq("id", existing.id);
+  } else {
+    await supabase
+      .from("ratings")
+      .insert({
+        resource_id:
+          resource.id,
+
+        visitor_token:
+          visitorToken,
+
+        rating: ratingValue,
+      });
+  }
+
+  const { data: ratings } =
+    await supabase
+      .from("ratings")
+      .select("rating")
+      .eq(
+        "resource_id",
+        resource.id
+      );
+
+  const total =
+    ratings?.reduce(
+      (sum, row) =>
+        sum + row.rating,
+      0
+    ) || 0;
+
+  const count =
+    ratings?.length || 0;
+
+  const average =
+    count > 0
+      ? total / count
+      : 0;
+
+  await supabase
+    .from("resources")
+    .update({
+      rating: average,
+      ratings_count: count,
+    })
+    .eq("id", resource.id);
+
+  setAverageRating(
+    average
+  );
+
+  setRatingsCount(
+    count
+  );
+
+  setUserRating(
+    ratingValue
+  );
+
+  setRatingLoading(false);
+}
+
 function getPageWidth() {
 
   if (screenWidth < 640) {
@@ -322,7 +457,19 @@ setResource({
   views: updatedViews
 });
 
+setAverageRating(
+  resourceData.rating || 0
+);
+
+setRatingsCount(
+  resourceData.ratings_count || 0
+);
+
 await checkBookmark(
+  resourceData.id
+);
+
+await loadUserRating(
   resourceData.id
 );
 
@@ -461,6 +608,57 @@ setLoading(false);
                 </p>
 
               </div>
+
+
+              <div className="mt-8">
+
+  <h3 className="mb-3 text-xl font-bold">
+
+    Rate this Resource
+
+  </h3>
+
+  <div className="flex gap-2">
+
+    {[1,2,3,4,5].map(
+      (star) => (
+
+      <button
+        key={star}
+        onClick={() =>
+          submitRating(star)
+        }
+        disabled={
+          ratingLoading
+        }
+        className="text-4xl"
+      >
+
+        {star <= userRating
+          ? "⭐"
+          : "☆"}
+
+      </button>
+
+    ))}
+  </div>
+
+  <p className="mt-2 text-lg">
+
+    Average Rating:
+    {" "}
+    {averageRating.toFixed(1)}
+    {" "}
+    ⭐
+
+    (
+    {ratingsCount}
+    {" "}
+    ratings)
+
+  </p>
+
+</div>
 
              {/* ACTIONS */}
 

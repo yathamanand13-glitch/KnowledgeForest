@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import Link from "next/link";
 
@@ -43,6 +44,8 @@ interface Resource {
   college_name?: string;
 
   faculty_name?: string;
+
+  rating?: number;
 }
 
 export default function ResourcesPage() {
@@ -56,22 +59,34 @@ export default function ResourcesPage() {
   const [searchTerm, setSearchTerm] =
     useState("");
 
-  useEffect(() => {
+    const searchParams = useSearchParams();
 
-    fetchResources();
+const collegeId =
+  searchParams.get("college");
 
-  }, []);
+ useEffect(() => {
+  fetchResources();
+}, [collegeId]);
 
  async function fetchResources() {
 
   setLoading(true);
 
-  const {
-    data: resourcesData,
-    error,
-  } = await supabase
-    .from("resources")
-    .select("*");
+ let query = supabase
+  .from("resources")
+  .select("*");
+
+if (collegeId) {
+  query = query.eq(
+    "college_id",
+    collegeId
+  );
+}
+
+const {
+  data: resourcesData,
+  error,
+} = await query;
 
   if (error) {
 
@@ -235,12 +250,35 @@ export default function ResourcesPage() {
 
                   </h2>
 
+                   <div className="mt-2 flex items-center gap-2">
+  <div>
+    {[1, 2, 3, 4, 5].map((star) => (
+      <span
+        key={star}
+        className={
+          star <= Math.round(resource.rating || 0)
+            ? "text-yellow-500"
+            : "text-gray-300"
+        }
+      >
+        ★
+      </span>
+    ))}
+  </div>
+
+  <span className="text-sm font-medium text-gray-600">
+    {Number(resource.rating || 0).toFixed(1)}
+  </span>
+</div>
+
+
                   <p className="mt-3 line-clamp-2 text-sm text-gray-600">
 
                     {resource.description}
 
                   </p>
 
+                 
                   {/* TAGS */}
 
                   <div className="mt-4 flex flex-wrap gap-2">

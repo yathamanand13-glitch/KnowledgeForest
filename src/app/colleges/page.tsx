@@ -1,63 +1,47 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import AppLayout from "@/components/AppLayout";
 
+import { supabase } from "@/lib/supabase";
+import { useEffect } from "react";
+
 import { Search, Building2 } from "lucide-react";
 
-const colleges = [
-  {
-    name: "JNTU Hyderabad",
-    code: "JNTUH",
-    resources: "12K+ Resources",
-  },
 
-  {
-    name: "VTU Karnataka",
-    code: "VTU",
-    resources: "9K+ Resources",
-  },
-
-  {
-    name: "Osmania University",
-    code: "OU",
-    resources: "7K+ Resources",
-  },
-
-  {
-    name: "Anna University",
-    code: "AU",
-    resources: "10K+ Resources",
-  },
-
-  {
-    name: "IIT Hyderabad",
-    code: "IITH",
-    resources: "18K+ Resources",
-  },
-
-  {
-    name: "BITS Pilani",
-    code: "BITS",
-    resources: "14K+ Resources",
-  },
-];
 
 export default function CollegesPage() {
-  const [searchTerm, setSearchTerm] =
-    useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+const [colleges, setColleges] = useState<any[]>([]);
+
+useEffect(() => {
+  loadColleges();
+}, []);
+
+const loadColleges = async () => {
+  const { data, error } = await supabase
+    .from("colleges")
+    .select("*")
+    .order("resource_count", { ascending: false });
+
+  if (!error && data) {
+    setColleges(data);
+  }
+};
 
   const filteredColleges = colleges.filter(
-    (college) =>
-      college.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
+  (college) =>
+    college.name
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase()) ||
 
-      college.code
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-  );
+    college.code
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase())
+);
 
   return (
     <AppLayout>
@@ -103,9 +87,9 @@ export default function CollegesPage() {
             
             {filteredColleges.map((college) => (
               <div
-                key={college.code}
-                className="group rounded-3xl bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
-              >
+  key={college.id}
+  className="group flex flex-col rounded-3xl bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
+>
                 
                 {/* Icon */}
                 <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[#355E3B] text-white">
@@ -114,9 +98,9 @@ export default function CollegesPage() {
                 </div>
 
                 {/* Content */}
-                <div className="mt-8">
+                <div className="mt-8 flex-grow">
                   
-                  <h2 className="text-2xl font-bold text-[#1F2937]">
+                  <h2 className="break-words text-2xl font-bold text-[#1F2937]">
                     {college.name}
                   </h2>
 
@@ -125,14 +109,17 @@ export default function CollegesPage() {
                   </p>
 
                   <p className="mt-5 text-sm font-medium text-[#355E3B]">
-                    {college.resources}
-                  </p>
+  {college.resource_count || 0} Resources
+</p>
                 </div>
 
                 {/* Button */}
-                <button className="mt-8 w-full rounded-2xl bg-[#355E3B] py-4 text-lg font-medium text-white transition-all duration-300 hover:bg-[#2d4f32]">
-                  Explore College
-                </button>
+                <Link
+  href={`/colleges/${college.id}`}
+  className="mt-8 block w-full rounded-2xl bg-[#355E3B] py-4 text-center text-lg font-medium text-white transition-all duration-300 hover:bg-[#2d4f32]"
+>
+  Explore College
+</Link>
               </div>
             ))}
           </div>
