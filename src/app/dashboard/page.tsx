@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   Upload,
@@ -15,30 +16,27 @@ import {
   Plus,
 } from "lucide-react";
 
-const recentUploads = [
-  {
-    title: "DBMS Unit 1 Notes",
-    type: "Notes",
-    downloads: "2.4K",
-    views: "4.1K",
-  },
 
-  {
-    title: "OS Important Questions",
-    type: "PYQs",
-    downloads: "1.8K",
-    views: "3.3K",
-  },
-
-  {
-    title: "CN Quick Revision",
-    type: "Revision Notes",
-    downloads: "3.1K",
-    views: "5K",
-  },
-];
 
 export default function DashboardPage() {
+
+
+  const [resources, setResources] =
+  useState<any[]>([]);
+
+  const [showAll, setShowAll] =
+  useState(false);
+
+const [totalUploads, setTotalUploads] =
+  useState(0);
+
+const [totalDownloads, setTotalDownloads] =
+  useState(0);
+
+const [totalViews, setTotalViews] =
+  useState(0);
+
+  const router = useRouter();
 
   const [faculty, setFaculty] =
     useState<any>(null);
@@ -89,6 +87,44 @@ async function fetchFaculty() {
   }
 
   setFaculty(data);
+
+  const {
+  data: uploadedResources,
+  error: resourceError,
+} = await supabase
+  .from("resources")
+  .select("*")
+  .eq("uploaded_by", data.id)
+  .order("created_at", {
+    ascending: false,
+  });
+
+if (!resourceError) {
+
+  setResources(
+    uploadedResources || []
+  );
+
+  setTotalUploads(
+    uploadedResources.length
+  );
+
+  setTotalDownloads(
+    uploadedResources.reduce(
+      (sum, item) =>
+        sum + (item.downloads || 0),
+      0
+    )
+  );
+
+  setTotalViews(
+    uploadedResources.reduce(
+      (sum, item) =>
+        sum + (item.views || 0),
+      0
+    )
+  );
+}
 
   setLoading(false);
 }
@@ -152,7 +188,7 @@ if (loading) {
               />
 
               <h2 className="mt-6 text-4xl font-bold">
-                320
+                {totalUploads}
               </h2>
 
               <p className="mt-2 text-gray-500">
@@ -168,7 +204,7 @@ if (loading) {
               />
 
               <h2 className="mt-6 text-4xl font-bold">
-                24K+
+                {totalDownloads}
               </h2>
 
               <p className="mt-2 text-gray-500">
@@ -184,7 +220,7 @@ if (loading) {
               />
 
               <h2 className="mt-6 text-4xl font-bold">
-                58K+
+                {totalViews}
               </h2>
 
               <p className="mt-2 text-gray-500">
@@ -200,7 +236,7 @@ if (loading) {
               />
 
               <h2 className="mt-6 text-4xl font-bold">
-                4.9
+                {faculty?.rating || 0}
               </h2>
 
               <p className="mt-2 text-gray-500">
@@ -221,43 +257,96 @@ if (loading) {
                   Recent Uploads
                 </h2>
 
-                <button className="text-[#355E3B] hover:underline">
-                  View All
-                </button>
+                {resources.length > 3 && (
+
+  <button
+    onClick={() =>
+      setShowAll(!showAll)
+    }
+    className="text-[#355E3B] hover:underline"
+  >
+    {showAll
+      ? "View Less"
+      : "View All"}
+  </button>
+
+)}
               </div>
+<div className="mt-8 space-y-5">
 
-              <div className="mt-8 space-y-5">
-                
-                {recentUploads.map((upload) => (
-                  <div
-                    key={upload.title}
-                    className="flex flex-col gap-5 rounded-2xl border border-gray-100 p-5 transition hover:shadow-md md:flex-row md:items-center md:justify-between"
-                  >
-                    
-                    <div>
-                      
-                      <h3 className="text-xl font-semibold">
-                        {upload.title}
-                      </h3>
+  {resources.length === 0 ? (
 
-                      <p className="mt-2 text-gray-500">
-                        {upload.type}
-                      </p>
-                    </div>
+    <div className="flex flex-col items-center justify-center py-12 text-center">
 
-                    <div className="flex gap-8 text-sm text-gray-500">
-                      
-                      <span>
-                        📥 {upload.downloads}
-                      </span>
+      <div className="mb-4 text-5xl">
+        📂
+      </div>
 
-                      <span>
-                        👁 {upload.views}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+      <h3 className="text-xl font-semibold text-gray-700">
+        No uploads yet
+      </h3>
+
+      <p className="mt-2 text-gray-500">
+        Upload your first academic resource.
+      </p>
+
+      <Link
+        href="/upload"
+        className="mt-6 rounded-xl bg-[#355E3B] px-6 py-3 text-white"
+      >
+        Upload Resource
+      </Link>
+
+    </div>
+
+  ) : (
+
+    (showAll
+      ? resources
+      : resources.slice(0, 3)
+    ).map((upload) => (
+
+      <div
+        key={upload.id}
+        onClick={() =>
+          router.push(
+            `/manage-uploads/${upload.id}`
+          )
+        }
+        className="cursor-pointer flex flex-col gap-5 rounded-2xl border border-gray-100 p-5 transition hover:shadow-md md:flex-row md:items-center md:justify-between"
+      >
+
+        <div>
+
+          <h3 className="text-xl font-semibold">
+            {upload.title}
+          </h3>
+
+          <p className="mt-2 text-gray-500">
+            {upload.resource_type}
+          </p>
+
+        </div>
+
+        <div className="flex gap-8 text-sm text-gray-500">
+
+          <span>
+            📥 {upload.downloads || 0}
+          </span>
+
+          <span>
+            👁 {upload.views || 0}
+          </span>
+
+        </div>
+
+      </div>
+
+    ))
+
+  )}
+
+</div>
             </div>
 
             {/* Faculty Profile */}

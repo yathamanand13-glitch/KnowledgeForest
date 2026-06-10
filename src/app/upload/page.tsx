@@ -176,6 +176,11 @@ const [
   ] = useState("");
 
   const [
+  uploadedFileType,
+  setUploadedFileType
+] = useState("");
+
+  const [
     uploadedThumbnailUrl,
     setUploadedThumbnailUrl
   ] = useState("");
@@ -375,6 +380,17 @@ const [regulation, setRegulation] = useState("");
 
     try {
 
+      const {
+  data: { session },
+} = await supabase.auth.getSession();
+
+const { data: facultyData } =
+  await supabase
+    .from("faculties")
+    .select("id")
+    .eq("email", session?.user?.email)
+    .single();
+
       const collegeId =
   await getOrCreateCollege(
     selectedCollege
@@ -453,6 +469,8 @@ const normalizedTags =
               file_url:
                 uploadedFileUrl,
 
+              file_type: uploadedFileType,
+
               thumbnail_url:
                 uploadedThumbnailUrl,
 
@@ -474,7 +492,7 @@ const normalizedTags =
 
 college_id: collegeId,
 
-uploaded_by: null,
+uploaded_by: facultyData?.id,
 
 subject_name: selectedSubject,
 
@@ -613,13 +631,13 @@ if (error) {
 
               <h2 className="mt-6 text-2xl font-semibold">
 
-                Upload PDF Resource
+                Upload Resource
 
               </h2>
 
               <p className="mt-2 text-gray-500">
 
-                Upload PDFs, notes and question papers.
+                Upload PDFs, DOCX, PPT, XLS and academic resources.
 
               </p>
 <div className="mt-6">
@@ -630,25 +648,40 @@ if (error) {
 
     style={{ display: "none" }}
 
-    fileName="resource-file.pdf"
+    fileName="resource-file"
 
     useUniqueFileName={true}
 
     folder="/knowledgeforest/resources"
 
-    accept=".pdf"
+    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
 
     authenticator={authenticator}
 
     validateFile={(file: File) => {
 
-      if (
-  file.type !==
-  "application/pdf"
-) {
+      const extension =
+  file.name
+    .split(".")
+    .pop()
+    ?.toLowerCase() || "";
+
+setUploadedFileType(extension);
+
+      const allowedTypes = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+];
+
+if (!allowedTypes.includes(file.type)) {
 
   alert(
-    "Only PDF files allowed."
+    "Only PDF, DOC, DOCX, PPT, PPTX, XLS and XLSX files are allowed."
   );
 
   return false;
@@ -686,7 +719,7 @@ if (error) {
       setPdfUploading(false);
 
       alert(
-        "PDF uploaded successfully!"
+        "File uploaded successfully!"
       );
 
     }}
@@ -700,7 +733,7 @@ if (error) {
       setPdfUploading(false);
 
       alert(
-        "PDF upload failed."
+        "File upload failed."
       );
     }}
 
@@ -723,7 +756,7 @@ if (error) {
 
   {pdfUploading
     ? "Uploading..."
-    : "Upload PDF"}
+    : "Upload File"}
 
 </button>
 
@@ -733,7 +766,7 @@ if (error) {
 
       <p className="text-sm font-semibold text-green-700">
 
-        PDF Uploaded Successfully
+        File Uploaded Successfully
 
       </p>
 
@@ -746,7 +779,7 @@ if (error) {
         className="mt-2 rounded-xl bg-red-500 px-4 py-2 text-white"
       >
 
-        Remove PDF
+        Remove File
 
       </button>
 

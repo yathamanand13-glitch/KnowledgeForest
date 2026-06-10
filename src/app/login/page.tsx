@@ -6,6 +6,7 @@ import AppLayout from "@/components/AppLayout";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useEffect } from "react";
+import Image from "next/image";
 
 import {
   GraduationCap,
@@ -109,6 +110,23 @@ const [
 
     const router = useRouter();
 
+    useEffect(() => {
+
+  const savedLogin =
+    localStorage.getItem(
+      "rememberedLogin"
+    );
+
+  if (savedLogin) {
+
+    setLoginInput(savedLogin);
+
+    setRememberMe(true);
+
+  }
+
+}, []);
+
     const [name, setName] =
   useState("");
 
@@ -123,6 +141,9 @@ const [loginInput, setLoginInput] =
 
 const [password, setPassword] =
   useState("");
+
+  const [rememberMe, setRememberMe] =
+  useState(false);
 
   const [
   confirmPassword,
@@ -226,12 +247,45 @@ const imageUrl =
 
       setResendCooldown(60);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
 
       alert(
-        err.message
-      );
+  err instanceof Error
+    ? err.message
+    : "Something went wrong"
+);
     }
+  };
+
+  const handleForgotPassword =
+  async () => {
+
+    const emailInput =
+      prompt(
+        "Enter your registered email"
+      );
+
+    if (!emailInput) return;
+
+    const { error } =
+      await supabase.auth.resetPasswordForEmail(
+        emailInput.trim(),
+        {
+          redirectTo:
+            `${window.location.origin}/reset-password`,
+        }
+      );
+
+    if (error) {
+
+      alert(error.message);
+
+      return;
+    }
+
+    alert(
+      "Password reset email sent."
+    );
   };
 
   const handleAuth =
@@ -459,9 +513,24 @@ if (
   return;
 }
 
-        alert("Login successful");
+        if (rememberMe) {
 
-        router.replace("/upload");
+  localStorage.setItem(
+    "rememberedLogin",
+    loginInput
+  );
+
+} else {
+
+  localStorage.removeItem(
+    "rememberedLogin"
+  );
+
+}
+
+alert("Login successful");
+
+router.replace("/upload");
 
       } else {
 
@@ -641,7 +710,7 @@ console.log(
         setIsLogin(true);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
 
   console.error(
     "AUTH ERROR:",
@@ -649,9 +718,10 @@ console.log(
   );
 
   alert(
-    err.message ||
-    "Something went wrong"
-  );
+  err instanceof Error
+    ? err.message
+    : "Something went wrong"
+);
 
     } finally {
 
@@ -727,11 +797,12 @@ console.log(
                     <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-[#355E3B] bg-[#EEF2E6]">
                       
                       {profileImage ? (
-                        <img
-                          src={profileImage || ""}
-                          alt="Profile"
-                          className="h-full w-full object-cover"
-                        />
+                        <Image
+  src={profileImage}
+  alt="Profile"
+  fill
+  className="object-cover"
+/>
                       ) : (
                         <Camera
                           className="text-[#355E3B]"
@@ -1100,19 +1171,28 @@ onChange={(e) =>
                 <label className="flex items-center gap-3 text-sm text-gray-600">
                   
                   <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
+  type="checkbox"
+  checked={rememberMe}
+  onChange={(e) =>
+    setRememberMe(
+      e.target.checked
+    )
+  }
+  className="h-4 w-4 rounded border-gray-300"
+/>
 
                   Remember Me
                 </label>
 
                 <button
-                  type="button"
-                  className="text-sm font-medium text-[#355E3B] hover:underline"
-                >
-                  Forgot Password?
-                </button>
+  type="button"
+  onClick={
+    handleForgotPassword
+  }
+  className="text-sm font-medium text-[#355E3B] hover:underline"
+>
+  Forgot Password?
+</button>
               </div>
             )}
 

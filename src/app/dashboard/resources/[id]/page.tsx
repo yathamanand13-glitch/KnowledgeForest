@@ -16,16 +16,6 @@ import {
   Bookmark,
 } from "lucide-react";
 
-import {
-  Document,
-  Page,
-} from "react-pdf";
-
-import "react-pdf/dist/Page/AnnotationLayer.css";
-
-import "react-pdf/dist/Page/TextLayer.css";
-
-import "@/lib/pdfWorker";
 
 interface Resource {
 
@@ -75,18 +65,6 @@ export default function ResourceDetailsPage() {
   const [loading, setLoading] =
     useState(true);
 
-  const [numPages, setNumPages] =
-    useState<number>(0);
-
- const [pageNumber, setPageNumber] =
-  useState(1);
-
-const [scale, setScale] =
-  useState(1.2);
-
-const [screenWidth, setScreenWidth] =
-  useState(1200);
-
   const [bookmarkLoading,
   setBookmarkLoading] =
   useState(false);
@@ -105,26 +83,6 @@ const [bookmarked,
 
   }, [id]);
 
-  useEffect(() => {
-
-  const handleResize = () => {
-    setScreenWidth(window.innerWidth);
-  };
-
-  handleResize();
-
-  window.addEventListener(
-    "resize",
-    handleResize
-  );
-
-  return () =>
-    window.removeEventListener(
-      "resize",
-      handleResize
-    );
-
-}, []);
 
 async function checkBookmark(
   resourceId: string
@@ -240,27 +198,6 @@ async function toggleBookmark() {
   setBookmarkLoading(false);
 }
 
-function getPageWidth() {
-
-  if (screenWidth < 640) {
-
-    return screenWidth - 30;
-
-  }
-
-  if (screenWidth < 1024) {
-
-    return screenWidth - 100;
-
-  }
-
-  return Math.min(
-    1000,
-    screenWidth - 300
-  );
-
-}
-
  async function fetchResource() {
 
   setLoading(true);
@@ -349,6 +286,35 @@ setLoading(false);
       </FacultyLayout>
     );
   }
+
+ const fileUrl =
+  resource?.file_url || "";
+
+const extension =
+  resource?.file_type
+    ?.toLowerCase() || "";
+
+const imageFiles = [
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+];
+
+const officeFiles = [
+  "doc",
+  "docx",
+  "ppt",
+  "pptx",
+  "xls",
+  "xlsx",
+];
+
+const officeViewerUrl =
+  `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
+    fileUrl
+  )}`;
 
   if (!resource) {
 
@@ -474,20 +440,13 @@ setLoading(false);
   {/* DOWNLOAD */}
 
   <a
-    href={resource.file_url}
-
-    target="_blank"
-
-    rel="noopener noreferrer"
-
-    className="inline-flex items-center gap-3 rounded-2xl bg-[#355E3B] px-8 py-4 text-lg font-semibold text-white transition hover:bg-[#2d4f32]"
-  >
-
-    <Download size={24} />
-
-    Download PDF
-
-  </a>
+  href={resource.file_url}
+  download
+  className="inline-flex items-center gap-3 rounded-2xl bg-[#355E3B] px-8 py-4 text-lg font-semibold text-white transition hover:bg-[#2d4f32]"
+>
+  <Download size={24} />
+  Download File
+</a>
 
   {/* BOOKMARK */}
 
@@ -528,218 +487,90 @@ setLoading(false);
 
           </div>
 
-       {/* PDF VIEWER */}
+       {/* FILE PREVIEW */}
 
-<div className="mt-16 rounded-3xl bg-white p-3 shadow-2xl sm:p-6 lg:p-10">
+<div className="mt-16 rounded-3xl bg-white p-6 shadow-2xl">
 
-  {/* CONTROLS */}
+  <h2 className="mb-6 text-3xl font-bold">
 
-  <div className="mb-8 flex flex-wrap items-center justify-center gap-4">
+    Resource Preview
 
-    {/* PREVIOUS */}
+  </h2>
 
-    <button
-      onClick={() =>
-        setPageNumber((prev) =>
-          Math.max(prev - 1, 1)
-        )
-      }
-      disabled={pageNumber <= 1}
-      className="
-        rounded-xl
-        bg-[#355E3B]
-        px-5
-        py-2
-        text-white
-        transition
-        disabled:cursor-not-allowed
-        disabled:opacity-50
-      "
-    >
-      Previous
-    </button>
+  {/* PDF */}
 
-    {/* PAGE COUNT */}
+  {extension === "pdf" && (
 
-    <div className="text-lg font-semibold">
+    <div className="overflow-hidden rounded-2xl border">
 
-      Page {pageNumber} of {numPages}
+      <iframe
+  src={fileUrl}
+  title="Resource Preview"
+  className="h-[900px] w-full"
+/>
 
     </div>
 
-    {/* NEXT */}
+  )}
 
-    <button
-      onClick={() =>
-        setPageNumber((prev) =>
-          numPages > 0
-            ? Math.min(prev + 1, numPages)
-            : prev
-        )
-      }
-      disabled={pageNumber >= numPages}
-      className="
-        rounded-xl
-        bg-[#355E3B]
-        px-5
-        py-2
-        text-white
-        transition
-        disabled:cursor-not-allowed
-        disabled:opacity-50
-      "
-    >
-      Next
-    </button>
+  {/* IMAGE */}
 
-    {/* ZOOM OUT */}
+  {imageFiles.includes(
+    extension || ""
+  ) && (
 
-    <button
-      onClick={() =>
-        setScale((prev) =>
-          Math.max(prev - 0.2, 0.6)
-        )
-      }
-      disabled={scale <= 0.6}
-      className="
-        rounded-xl
-        border
-        px-4
-        py-2
-        transition
-        disabled:cursor-not-allowed
-        disabled:opacity-50
-      "
-    >
-      Zoom -
-    </button>
+    <img
+      src={fileUrl}
+      alt={resource.title}
+      className="w-full rounded-2xl"
+    />
 
-    {/* ZOOM IN */}
+  )}
 
-    <button
-      onClick={() =>
-        setScale((prev) =>
-          Math.min(prev + 0.2, 3)
-        )
-      }
-      disabled={scale >= 3}
-      className="
-        rounded-xl
-        border
-        px-4
-        py-2
-        transition
-        disabled:cursor-not-allowed
-        disabled:opacity-50
-      "
-    >
-      Zoom +
-    </button>
+  {/* OFFICE */}
 
-  </div>
+  {officeFiles.includes(
+    extension || ""
+  ) && (
 
-  {/* PDF CONTAINER */}
+    <iframe
+  src={officeViewerUrl}
+  title="Resource Preview"
+  className="h-[900px] w-full rounded-2xl border"
+/>
 
-  <div
-    className="
-      max-h-[90vh]
-      overflow-auto
-      rounded-2xl
-      border
-      bg-gray-100
-      p-2
-      sm:p-4
-    "
-  >
+  )}
 
-    <div className="flex justify-center">
+  {/* FALLBACK */}
 
-      {resource.file_url ? (
+  {![
+    "pdf",
+    ...imageFiles,
+    ...officeFiles,
+  ].includes(
+    extension || ""
+  ) && (
 
+    <div className="rounded-2xl border p-10 text-center">
 
-        <Document
-          file={resource.file_url}
+      <p className="mb-5 text-xl">
 
-         onLoadSuccess={(pdf) => {
+        Preview not available
 
-  console.log(
-    "PDF Loaded:",
-    pdf
-  );
+      </p>
 
-  console.log(
-    "Pages:",
-    pdf.numPages
-  );
-
-  setNumPages(
-    pdf.numPages
-  );
-
-  setPageNumber(1);
-
-}}
-
-          onLoadError={(err) => {
-
-            console.error(
-              "PDF LOAD ERROR:",
-              err
-            );
-
-          }}
-
-          loading={
-
-            <div className="flex items-center justify-center py-10">
-
-  <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#355E3B] border-t-transparent" />
-
-</div>
-
-          }
-
-          error={
-
-            <p className="text-center text-red-500">
-
-              Failed to load PDF.
-              The file may be corrupted
-              or blocked by CORS.
-
-            </p>
-
-          }
-
-        >
-
-          <Page
-            pageNumber={pageNumber}
-
-            width={getPageWidth()}
-
-            scale={scale}
-
-            renderTextLayer={false}
-
-            renderAnnotationLayer={false}
-          />
-
-        </Document>
-
-      ) : (
-
-        <div className="text-center text-xl text-red-500">
-
-          No PDF Available
-
-        </div>
-
-      )}
+      <a
+  href={resource.file_url}
+  download
+  className="inline-flex items-center gap-3 rounded-2xl bg-[#355E3B] px-8 py-4 text-lg font-semibold text-white transition hover:bg-[#2d4f32]"
+>
+  <Download size={24} />
+  Download File
+</a>
 
     </div>
 
-  </div>
+  )}
 
 </div>
 
