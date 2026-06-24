@@ -11,10 +11,7 @@ import {
   GraduationCap,
   TrendingUp,
   LogIn,
-  LayoutDashboard,
-  Bookmark,
-  Upload,
-  Settings,
+  ShieldCheck
 } from "lucide-react";
 
 interface SidebarProps {
@@ -98,6 +95,12 @@ export default function Sidebar({
               label: "Faculty Login",
               href: "/login",
             },
+
+            {
+  icon: ShieldCheck,
+  label: "Admin Login",
+  href: "/admin/login",
+},
 
           ].map((item, index) => (
             <Link

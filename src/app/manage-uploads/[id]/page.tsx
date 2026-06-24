@@ -172,6 +172,30 @@ export default function ManageUploadPage() {
       "Resource deleted successfully!"
     );
 
+    if (resource.subject_id) {
+
+  const { data: subject } =
+    await supabase
+      .from("subjects")
+      .select("resource_count")
+      .eq("id", resource.subject_id)
+      .single();
+
+  await supabase
+    .from("subjects")
+    .update({
+      resource_count: Math.max(
+        (subject?.resource_count || 1) - 1,
+        0
+      ),
+    })
+    .eq(
+      "id",
+      resource.subject_id
+    );
+
+}
+
     const {
   data: { session },
 } = await supabase.auth.getSession();

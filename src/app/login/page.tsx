@@ -682,6 +682,15 @@ console.log(
   college_id:
     collegeData.id,
 
+    approval_status:
+        "pending",
+
+      can_upload:
+        false,
+
+      status:
+        "active",
+
   created_at:
     new Date().toISOString(),
 

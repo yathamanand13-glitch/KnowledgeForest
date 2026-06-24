@@ -131,6 +131,27 @@ async function getOrCreateSubject(
 
   }
 
+  // Increase subject count of college
+
+if (collegeId) {
+
+  const { data: college } =
+    await supabase
+      .from("colleges")
+      .select("subject_count")
+      .eq("id", collegeId)
+      .single();
+
+  await supabase
+    .from("colleges")
+    .update({
+      subject_count:
+        (college?.subject_count || 0) + 1,
+    })
+    .eq("id", collegeId);
+
+}
+
   return newSubject.id;
 }
 
@@ -160,6 +181,16 @@ export default function UploadPage() {
 
   const [loading, setLoading] =
     useState(false);
+
+    const [
+  canUpload,
+  setCanUpload
+] = useState(false);
+
+const [
+  approvalStatus,
+  setApprovalStatus
+] = useState("pending");
 
     const [pdfUploading, setPdfUploading] =
   useState(false);
@@ -327,6 +358,32 @@ const [regulation, setRegulation] = useState("");
           "/login"
         );
       }
+
+      if (session?.user?.email) {
+
+  const { data: faculty } =
+    await supabase
+      .from("faculties")
+      .select(
+        "can_upload, approval_status"
+      )
+      .eq(
+        "email",
+        session.user.email
+      )
+      .single();
+
+  if (faculty) {
+
+    setCanUpload(
+      faculty.can_upload
+    );
+
+    setApprovalStatus(
+      faculty.approval_status
+    );
+  }
+}
     };
 
   checkAuth();
@@ -387,9 +444,38 @@ const [regulation, setRegulation] = useState("");
 const { data: facultyData } =
   await supabase
     .from("faculties")
-    .select("id")
-    .eq("email", session?.user?.email)
+    .select(
+      "id, can_upload, approval_status"
+    )
+    .eq(
+      "email",
+      session?.user?.email
+    )
     .single();
+
+    if (!facultyData) {
+
+  alert(
+    "Faculty account not found."
+  );
+
+  setLoading(false);
+
+  return;
+}
+
+if (
+  !facultyData.can_upload
+) {
+
+  alert(
+    "Your account is awaiting admin approval. Upload access is currently disabled."
+  );
+
+  setLoading(false);
+
+  return;
+}
 
       const collegeId =
   await getOrCreateCollege(
@@ -502,6 +588,26 @@ faculty_name: selectedFaculty,
 
             },
           ]);
+
+          if (!error && subjectId) {
+
+  const { data: subject } =
+    await supabase
+      .from("subjects")
+      .select("resource_count")
+      .eq("id", subjectId)
+      .single();
+
+  await supabase
+    .from("subjects")
+    .update({
+      resource_count:
+        (subject?.resource_count || 0) + 1,
+    })
+    .eq("id", subjectId);
+
+}
+
 if (error) {
 
   console.log(error);
@@ -582,6 +688,28 @@ if (error) {
     <FacultyLayout>
 
       <main className="min-h-screen bg-[#DCE3CC] p-6 md:p-10">
+
+        {!canUpload && (
+
+  <div className="mb-8 rounded-2xl border border-yellow-300 bg-yellow-50 p-5">
+
+    <h3 className="text-lg font-semibold text-yellow-800">
+
+      Account Approval Pending
+
+    </h3>
+
+    <p className="mt-2 text-yellow-700">
+
+      Your faculty account has been verified,
+      but resource upload access is waiting
+      for admin approval.
+
+    </p>
+
+  </div>
+
+)}
 
         <div className="mb-10">
 
@@ -708,7 +836,7 @@ if (!allowedTypes.includes(file.type)) {
 
     }}
 
-    onSuccess={(res: any) => {
+    onSuccess={async (res: any) => {
 
       console.log(res);
 
@@ -717,6 +845,44 @@ if (!allowedTypes.includes(file.type)) {
       );
 
       setPdfUploading(false);
+
+      const {
+  data: { session },
+} = await supabase.auth.getSession();
+
+if (session?.user?.email) {
+
+  const { data: faculty } =
+    await supabase
+
+      .from("faculties")
+
+      .select("id, uploads_count")
+
+      .eq(
+        "email",
+        session.user.email
+      )
+
+      .single();
+
+  if (faculty) {
+
+    await supabase
+
+      .from("faculties")
+
+      .update({
+        uploads_count:
+          (faculty.uploads_count || 0) + 1,
+      })
+
+      .eq(
+        "id",
+        faculty.id
+      );
+  }
+}
 
       alert(
         "File uploaded successfully!"
@@ -1314,13 +1480,24 @@ if (!allowedTypes.includes(file.type)) {
             {/* Upload Button */}
             <button
               onClick={handleUpload}
-              disabled={loading}
-              className="w-full rounded-2xl bg-[#355E3B] py-4 text-lg font-semibold text-white transition hover:scale-[1.02]"
+               disabled={
+    loading ||
+    !canUpload
+  }
+              className={`w-full rounded-2xl py-4 text-lg font-semibold text-white transition
+
+${
+  !canUpload
+    ? "bg-gray-400 cursor-not-allowed"
+    : "bg-[#355E3B] hover:scale-[1.02]"
+}`}
             >
 
               {loading
-                ? "Uploading..."
-                : "Upload Resource"}
+  ? "Uploading..."
+  : !canUpload
+  ? "Awaiting Admin Approval"
+  : "Upload Resource"}
 
             </button>
 
