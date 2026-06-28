@@ -14,7 +14,18 @@ import {
   Bell,
 } from "lucide-react";
 
-export default function AdminSidebar() {
+interface Props {
+
+  open: boolean;
+
+  onClose: () => void;
+
+}
+
+export default function AdminSidebar({
+  open,
+  onClose,
+}: Props) {
   const pathname = usePathname();
 
   const menu = [
@@ -56,7 +67,28 @@ export default function AdminSidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[280px] bg-white shadow-xl border-r">
+    <>
+
+{open && (
+
+<div
+  onClick={onClose}
+  className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+/>
+
+)}
+
+<aside
+  className={`fixed left-0 top-0 z-50 h-screen w-[280px] border-r bg-white shadow-xl transition-transform duration-300
+
+  ${
+    open
+      ? "translate-x-0"
+      : "-translate-x-full"
+  }
+
+  lg:translate-x-0`}
+>
 
       <div className="border-b p-6">
 
@@ -81,6 +113,7 @@ export default function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={`flex items-center gap-4 rounded-xl px-4 py-3 transition ${
                 active
                   ? "bg-[#355E3B] text-white"
@@ -111,5 +144,6 @@ export default function AdminSidebar() {
       </div>
 
     </aside>
+    </>
   );
 }

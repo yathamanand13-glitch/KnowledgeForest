@@ -28,6 +28,11 @@ export default function AdminFacultiesPage() {
   const [searchTerm, setSearchTerm] =
     useState("");
 
+    const itemsPerPage = 5;
+
+const [currentPage, setCurrentPage] =
+  useState(1);
+
     const [showAddModal, setShowAddModal] =
   useState(false);
 
@@ -105,6 +110,20 @@ const [selectedFaculty, setSelectedFaculty] =
           )
     );
 
+    const totalPages = Math.ceil(
+  filteredFaculties.length /
+  itemsPerPage
+);
+
+const paginatedFaculties =
+  filteredFaculties.slice(
+    (currentPage - 1) *
+      itemsPerPage,
+
+    currentPage *
+      itemsPerPage
+  );
+
   return (
 
     <div>
@@ -126,11 +145,15 @@ const [selectedFaculty, setSelectedFaculty] =
         <input
           type="text"
           value={searchTerm}
-          onChange={(e) =>
-            setSearchTerm(
-              e.target.value
-            )
-          }
+         onChange={(e) => {
+
+  setSearchTerm(
+    e.target.value
+  );
+
+  setCurrentPage(1);
+
+}}
           placeholder="Search faculty..."
           className="w-[350px] rounded-xl border border-gray-300 bg-white px-4 py-3"
         />
@@ -217,7 +240,7 @@ const [selectedFaculty, setSelectedFaculty] =
 
             <tbody>
 
-              {filteredFaculties.map(
+              {paginatedFaculties.map(
                 (faculty) => (
 
                   <tr
@@ -296,26 +319,112 @@ const [selectedFaculty, setSelectedFaculty] =
 </button>
 
     <button
-      onClick={async () => {
+  disabled={
+    faculty.approval_status ===
+    "approved"
+  }
+
+  onClick={async () => {
 
         await supabase
-          .from("faculties")
-          .update({
-            approval_status:
-              "approved",
-          })
-          .eq(
-            "id",
-            faculty.id
-          );
+  .from("faculties")
+  .update({
+
+    approval_status:
+      "approved",
+
+    can_upload: true,
+
+    status: "active",
+
+  })
+  .eq(
+    "id",
+    faculty.id
+  );
+
+  await fetch(
+  "/api/send-approval-email",
+  {
+    method: "POST",
+
+    headers: {
+      "Content-Type":
+        "application/json",
+    },
+
+    body: JSON.stringify({
+
+      email: faculty.email,
+
+      facultyName:
+        faculty.faculty_name,
+
+    }),
+
+  }
+);
 
         loadFaculties();
 
       }}
-      className="rounded-lg bg-green-600 px-3 py-2 text-white"
+      className={`rounded-lg px-3 py-2 text-white ${
+  faculty.approval_status ===
+  "approved"
+    ? "cursor-not-allowed bg-gray-400"
+    : "bg-green-600 hover:bg-green-700"
+}`}
     >
-      Approve
+      {
+  faculty.approval_status ===
+  "approved"
+    ? "Approved"
+    : "Approve"
+}
     </button>
+
+    <button
+  onClick={async () => {
+
+    const confirmed =
+      confirm(
+        "Reject this faculty?"
+      );
+
+    if (!confirmed) return;
+
+    await supabase
+      .from("faculties")
+      .update({
+        approval_status:
+          "rejected",
+
+        can_upload: false,
+
+        status: "inactive",
+      })
+      .eq(
+        "id",
+        faculty.id
+      );
+
+    await supabase
+      .from(
+        "admin_notifications"
+      )
+      .delete()
+      .eq(
+        "faculty_email",
+        faculty.email
+      );
+
+    loadFaculties();
+
+  }}
+  className="rounded-lg bg-red-700 px-3 py-2 text-white"
+>
+  Reject
+</button>
 
     <button
       onClick={async () => {
@@ -405,7 +514,7 @@ const [selectedFaculty, setSelectedFaculty] =
 
         <div className="space-y-4 p-4 md:hidden">
 
-  {filteredFaculties.map((faculty) => (
+  {paginatedFaculties.map((faculty) => (
 
     <div
       key={faculty.id}
@@ -460,23 +569,117 @@ const [selectedFaculty, setSelectedFaculty] =
     Edit
   </button>
 
-  <button
-    onClick={async () => {
+<button
+  disabled={
+    faculty.approval_status ===
+    "approved"
+  }
+
+  onClick={async () => {
 
       await supabase
-        .from("faculties")
-        .update({
-          approval_status: "approved",
-        })
-        .eq("id", faculty.id);
+  .from("faculties")
+  .update({
+
+    approval_status: "approved",
+
+    can_upload: true,
+
+    status: "active",
+
+  })
+  .eq("id", faculty.id);
+
+  await supabase
+  .from("admin_notifications")
+  .delete()
+  .eq(
+    "faculty_email",
+    faculty.email
+  );
+
+  await fetch(
+  "/api/send-approval-email",
+  {
+    method: "POST",
+
+    headers: {
+      "Content-Type":
+        "application/json",
+    },
+
+    body: JSON.stringify({
+
+      email: faculty.email,
+
+      facultyName:
+        faculty.faculty_name,
+
+    }),
+
+  }
+);
 
       loadFaculties();
 
     }}
-    className="rounded-lg bg-green-600 py-2 text-white"
+    className={`rounded-lg px-3 py-2 text-white ${
+  faculty.approval_status ===
+  "approved"
+    ? "cursor-not-allowed bg-gray-400"
+    : "bg-green-600 hover:bg-green-700"
+}`}
   >
-    Approve
+    {
+  faculty.approval_status ===
+  "approved"
+    ? "Approved"
+    : "Approve"
+}
   </button>
+
+  <button
+  onClick={async () => {
+
+    const confirmed =
+      confirm(
+        "Reject this faculty?"
+      );
+
+    if (!confirmed) return;
+
+    await supabase
+      .from("faculties")
+      .update({
+        approval_status:
+          "rejected",
+
+        can_upload: false,
+
+        status: "inactive",
+      })
+      .eq(
+        "id",
+        faculty.id
+      );
+
+    await supabase
+      .from(
+        "admin_notifications"
+      )
+      .delete()
+      .eq(
+        "faculty_email",
+        faculty.email
+      );
+
+    loadFaculties();
+
+  }}
+  className="rounded-lg bg-red-700 px-3 py-2 text-white"
+>
+  Reject
+</button>
 
   <button
     onClick={async () => {
@@ -555,24 +758,53 @@ const [selectedFaculty, setSelectedFaculty] =
         <div className="flex items-center justify-between border-t p-6">
 
           <span className="text-gray-500">
-            Showing {
-              filteredFaculties.length
-            } faculties
+            Showing
+{" "}
+{
+  paginatedFaculties.length
+}
+{" "}
+of
+{" "}
+{
+  filteredFaculties.length
+}
+{" "}
+faculties
           </span>
 
           <div className="flex gap-3">
 
-            <button className="rounded-lg border px-4 py-2">
-              Previous
-            </button>
+            <button
+  disabled={currentPage === 1}
+  onClick={() =>
+    setCurrentPage(
+      currentPage - 1
+    )
+  }
+  className="rounded-lg border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  Previous
+</button>
 
-            <button className="rounded-lg bg-[#355E3B] px-4 py-2 text-white">
-              1
-            </button>
+<span className="rounded-lg bg-[#355E3B] px-4 py-2 text-white">
+  {currentPage} / {totalPages}
+</span>
 
-            <button className="rounded-lg border px-4 py-2">
-              Next
-            </button>
+<button
+  disabled={
+    currentPage ===
+    totalPages
+  }
+  onClick={() =>
+    setCurrentPage(
+      currentPage + 1
+    )
+  }
+  className="rounded-lg border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  Next
+</button>
 
           </div>
 

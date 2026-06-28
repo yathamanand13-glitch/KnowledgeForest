@@ -712,6 +712,19 @@ console.log(
   return;
 }
 
+await supabase
+  .from("admin_notifications")
+  .insert({
+    title: "New Faculty Registration",
+
+    message:
+      `${name} (${facultyId}) has registered and is awaiting approval.`,
+
+    type: "faculty_approval",
+
+    is_read: false,
+  });
+
        alert(
   "Verification email sent. Please verify your email before login."
 );
@@ -738,6 +751,7 @@ console.log(
 
     }
   };
+
 
   return (
     <AppLayout>

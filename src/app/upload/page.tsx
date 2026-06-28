@@ -216,6 +216,16 @@ const [
     setUploadedThumbnailUrl
   ] = useState("");
 
+  const [
+  uploadedFileId,
+  setUploadedFileId,
+] = useState("");
+
+const [
+  uploadedThumbnailId,
+  setUploadedThumbnailId,
+] = useState("");
+
   // Form States
   const [title, setTitle] =
     useState("");
@@ -382,6 +392,14 @@ const [regulation, setRegulation] = useState("");
     setApprovalStatus(
       faculty.approval_status
     );
+
+    if (!faculty.can_upload) {
+
+  router.replace("/dashboard");
+
+  return;
+
+}
   }
 }
     };
@@ -445,7 +463,7 @@ const { data: facultyData } =
   await supabase
     .from("faculties")
     .select(
-      "id, can_upload, approval_status"
+      "id, can_upload, approval_status, uploads_count"
     )
     .eq(
       "email",
@@ -560,6 +578,12 @@ const normalizedTags =
               thumbnail_url:
                 uploadedThumbnailUrl,
 
+              imagekit_file_id:
+                uploadedFileId,
+
+              imagekit_thumbnail_id:
+                uploadedThumbnailId,
+
               downloads: 0,
 
               rating: 0,
@@ -568,7 +592,7 @@ const normalizedTags =
                 crypto.randomUUID(),
 
               status:
-                "approved",
+                "pending",
 
               tags: normalizedTags,
 
@@ -629,6 +653,22 @@ if (error) {
 
   }
 
+   await supabase
+
+    .from("faculties")
+
+    .update({
+
+      uploads_count:
+        (facultyData.uploads_count || 0) + 1,
+
+    })
+
+    .eq(
+      "id",
+      facultyData.id
+    );
+
   alert(
     "Resource uploaded successfully!"
   );
@@ -653,6 +693,9 @@ if (error) {
 
   setUploadedFileUrl("");
   setUploadedThumbnailUrl("");
+  setUploadedFileId("");
+
+  setUploadedThumbnailId("");
 
 }
 
@@ -844,45 +887,12 @@ if (!allowedTypes.includes(file.type)) {
         res.url
       );
 
+      setUploadedFileId(
+    res.fileId
+  );
+
       setPdfUploading(false);
 
-      const {
-  data: { session },
-} = await supabase.auth.getSession();
-
-if (session?.user?.email) {
-
-  const { data: faculty } =
-    await supabase
-
-      .from("faculties")
-
-      .select("id, uploads_count")
-
-      .eq(
-        "email",
-        session.user.email
-      )
-
-      .single();
-
-  if (faculty) {
-
-    await supabase
-
-      .from("faculties")
-
-      .update({
-        uploads_count:
-          (faculty.uploads_count || 0) + 1,
-      })
-
-      .eq(
-        "id",
-        faculty.id
-      );
-  }
-}
 
       alert(
         "File uploaded successfully!"
@@ -905,9 +915,12 @@ if (session?.user?.email) {
 
   />
 
-  <button
+ <button
   type="button"
+  disabled={!canUpload}
   onClick={() => {
+
+    if (!canUpload) return;
 
     const input =
       document.getElementById(
@@ -917,11 +930,19 @@ if (session?.user?.email) {
     input?.click();
 
   }}
-  className="cursor-pointer rounded-2xl bg-[#355E3B] px-6 py-3 font-semibold text-white"
+  className={`rounded-2xl px-6 py-3 font-semibold text-white
+
+${
+  canUpload
+    ? "bg-[#355E3B]"
+    : "cursor-not-allowed bg-gray-400"
+}`}
 >
 
   {pdfUploading
     ? "Uploading..."
+    : !canUpload
+    ? "Locked"
     : "Upload File"}
 
 </button>
@@ -957,7 +978,16 @@ if (session?.user?.email) {
             </div>
 
             {/* FORM */}
-            <div className="rounded-3xl bg-white p-8 shadow-sm">
+            <div
+className={`rounded-3xl bg-white p-8 shadow-sm
+
+${
+!canUpload
+? "pointer-events-none opacity-60"
+: ""
+}
+`}
+>
 
               <div className="grid gap-6 md:grid-cols-2">
 
@@ -1375,6 +1405,10 @@ if (session?.user?.email) {
         res.url
       );
 
+      setUploadedThumbnailId(
+       res.fileId
+      );
+
       setThumbnailUploading(false);
 
       alert(
@@ -1397,27 +1431,39 @@ if (session?.user?.email) {
   />
 
   <button
-    type="button"
+type="button"
 
-    onClick={() => {
+disabled={!canUpload}
 
-      const input =
-        document.getElementById(
-          "thumbnail-upload"
-        ) as HTMLElement;
+onClick={() => {
 
-      input?.click();
+  if (!canUpload) return;
 
-    }}
+  const input =
+    document.getElementById(
+      "thumbnail-upload"
+    ) as HTMLElement;
 
-    className="cursor-pointer rounded-2xl bg-[#355E3B] px-6 py-3 font-semibold text-white"
-  >
+  input?.click();
 
-    {thumbnailUploading
-      ? "Uploading..."
-      : "Upload Thumbnail"}
+}}
 
-  </button>
+className={`rounded-2xl px-6 py-3 font-semibold text-white
+
+${
+canUpload
+? "bg-[#355E3B]"
+: "cursor-not-allowed bg-gray-400"
+}`}
+>
+
+{thumbnailUploading
+? "Uploading..."
+: !canUpload
+? "Locked"
+: "Upload Thumbnail"}
+
+</button>
 
   {uploadedThumbnailUrl && (
 

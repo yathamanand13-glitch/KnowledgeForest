@@ -167,15 +167,43 @@ if (loading) {
             </div>
 
             {/* Upload Button */}
-            <Link
-            href="/upload"
-            className="flex items-center justify-center gap-3 rounded-2xl bg-[#355E3B] px-8 py-4 text-lg font-medium text-white transition hover:bg-[#2d4f32]"
->
-            <Plus size={24} />
+            {faculty?.approval_status === "approved" && (
 
-             Upload Resource
-            </Link>
+<Link
+href="/upload"
+className="flex items-center justify-center gap-3 rounded-2xl bg-[#355E3B] px-8 py-4 text-lg font-medium text-white transition hover:bg-[#2d4f32]"
+>
+  <Plus size={24}/>
+  Upload Resource
+</Link>
+
+)}
           </div>
+
+          {faculty?.approval_status !== "approved" && (
+
+  <div className="mb-10 rounded-3xl border border-yellow-300 bg-yellow-50 p-6">
+
+    <h2 className="text-2xl font-bold text-yellow-800">
+      ⏳ Admin Approval Pending
+    </h2>
+
+    <p className="mt-3 text-yellow-700">
+      Your email has been verified successfully.
+
+      <br />
+
+      Your account is waiting for administrator approval.
+
+      <br />
+
+      You'll receive an email once your account is approved.
+
+    </p>
+
+  </div>
+
+)}
 
           {/* Stats */}
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -290,12 +318,16 @@ if (loading) {
         Upload your first academic resource.
       </p>
 
-      <Link
-        href="/upload"
-        className="mt-6 rounded-xl bg-[#355E3B] px-6 py-3 text-white"
-      >
-        Upload Resource
-      </Link>
+      {faculty?.approval_status === "approved" && (
+
+<Link
+href="/upload"
+className="mt-6 rounded-xl bg-[#355E3B] px-6 py-3 text-white"
+>
+Upload Resource
+</Link>
+
+)}
 
     </div>
 
@@ -380,16 +412,16 @@ if (loading) {
                     {faculty?.college_code}
                   </span>
 
-                  {faculty?.is_verified ? (
+                 {faculty?.approval_status === "approved" ? (
 
-  <span className="rounded-full bg-[#EEF2E6] px-4 py-2 text-sm font-medium text-green-700">
-    ✅ Verified Faculty
+  <span className="rounded-full bg-green-100 px-4 py-2 text-sm font-medium text-green-700">
+    ✅ Approved Faculty
   </span>
 
 ) : (
 
-  <span className="rounded-full bg-red-100 px-4 py-2 text-sm font-medium text-red-700">
-    ❌ Not Verified
+  <span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-medium text-yellow-700">
+    ⏳ Approval Pending
   </span>
 
 )}
@@ -405,12 +437,22 @@ if (loading) {
                    Edit Profile
                    </Link>
 
-                  <Link
-                  href="/manage-uploads"
-                  className="block w-full rounded-2xl border border-[#355E3B] py-4 text-center text-lg font-medium text-[#355E3B] transition hover:bg-[#EEF2E6]"
+                  {faculty?.approval_status === "approved" ? (
+
+<Link
+href="/manage-uploads"
+className="block w-full rounded-2xl border border-[#355E3B] py-4 text-center text-lg font-medium text-[#355E3B] transition hover:bg-[#EEF2E6]"
 >
-                   Manage Uploads
-                  </Link>
+Manage Uploads
+</Link>
+
+) : (
+
+<div className="block w-full cursor-not-allowed rounded-2xl border border-gray-300 bg-gray-100 py-4 text-center text-lg font-medium text-gray-500">
+Manage Uploads
+</div>
+
+)}
                 </div>
               </div>
             </div>
