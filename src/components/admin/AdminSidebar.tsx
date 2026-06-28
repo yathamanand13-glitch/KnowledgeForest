@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 import {
   LayoutDashboard,
@@ -27,6 +28,8 @@ export default function AdminSidebar({
   onClose,
 }: Props) {
   const pathname = usePathname();
+
+  const router = useRouter();
 
   const menu = [
     {
@@ -65,6 +68,25 @@ export default function AdminSidebar({
       icon: BarChart3,
     },
   ];
+
+  async function handleLogout() {
+
+  const confirmed = window.confirm(
+    "Are you sure you want to logout?"
+  );
+
+  if (!confirmed) return;
+
+  // Remove local admin session
+  localStorage.removeItem("admin");
+
+  // Sign out Supabase (safe even if admin doesn't use Supabase Auth)
+  await supabase.auth.signOut();
+
+  // Redirect to admin login
+  router.replace("/admin/login");
+
+}
 
   return (
     <>
@@ -134,6 +156,7 @@ export default function AdminSidebar({
       <div className="absolute bottom-0 w-full border-t p-4">
 
         <button
+          onClick={handleLogout}
           className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-red-600 transition hover:bg-red-50"
         >
           <LogOut size={20} />
