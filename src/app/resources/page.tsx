@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import Link from "next/link";
@@ -50,7 +50,7 @@ interface Resource {
   rating?: number;
 }
 
-export default function ResourcesPage() {
+function ResourcesContent() {
 
   const [resources, setResources] =
     useState<Resource[]>([]);
@@ -366,5 +366,20 @@ const {
       </section>
 
     </AppLayout>
+  );
+}
+export default function ResourcesPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppLayout>
+          <div className="flex min-h-screen items-center justify-center text-2xl font-bold">
+            Loading...
+          </div>
+        </AppLayout>
+      }
+    >
+      <ResourcesContent />
+    </Suspense>
   );
 }
