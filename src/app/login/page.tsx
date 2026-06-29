@@ -654,6 +654,8 @@ console.log(
 
   id: userId,
 
+  auth_user_id: userId,
+
   faculty_name: name.trim(),
 
   faculty_id:

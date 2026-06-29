@@ -1,6 +1,14 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import {
+  ReactNode,
+  useEffect,
+  useState,
+} from "react";
+
+import { useRouter } from "next/navigation";
+
+import { supabase } from "@/lib/supabase";
 
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
@@ -15,6 +23,64 @@ export default function AdminLayout({
 
   const [sidebarOpen, setSidebarOpen] =
     useState(false);
+
+    const router = useRouter();
+
+const [checkingAuth, setCheckingAuth] =
+  useState(true);
+
+  useEffect(() => {
+
+  async function verifyAdmin() {
+
+    // Check Supabase session
+    const {
+      data: { session },
+    } =
+      await supabase.auth.getSession();
+
+    if (!session?.user) {
+
+      router.replace("/admin/login");
+
+      return;
+
+    }
+
+    // Verify this user exists in admins table
+    const {
+      data: admin,
+    } =
+      await supabase
+
+        .from("admins")
+
+        .select("id")
+
+        .eq(
+          "auth_user_id",
+          session.user.id
+        )
+
+        .single();
+
+    if (!admin) {
+
+      await supabase.auth.signOut();
+
+      router.replace("/admin/login");
+
+      return;
+
+    }
+
+    setCheckingAuth(false);
+
+  }
+
+  verifyAdmin();
+
+}, [router]);
 
     useEffect(() => {
 
@@ -61,6 +127,20 @@ useEffect(() => {
   };
 
 }, [sidebarOpen]);
+
+if (checkingAuth) {
+
+  return (
+
+    <div className="flex min-h-screen items-center justify-center bg-[#F5F7F2]">
+
+      <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#355E3B] border-t-transparent" />
+
+    </div>
+
+  );
+
+}
 
   return (
 

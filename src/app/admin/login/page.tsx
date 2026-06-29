@@ -12,26 +12,66 @@ export default function AdminLoginPage() {
 
   async function handleLogin() {
 
-  const { data, error } = await supabase
-    .from("admins")
-    .select("*")
-    .eq("email", email)
-    .eq("password_hash", password)
-    .single();
+  // Login using Supabase Auth
 
-  if (error || !data) {
+  const {
+    data: authData,
+    error: authError,
+  } = await supabase.auth.signInWithPassword({
+
+    email,
+    password,
+
+  });
+
+  if (authError || !authData.user) {
 
     alert("Invalid Email or Password");
 
     return;
+
   }
 
+  // Verify this Auth user is an Admin
+
+  const {
+    data: admin,
+    error: adminError,
+  } = await supabase
+
+    .from("admins")
+
+    .select("*")
+
+    .eq(
+      "auth_user_id",
+      authData.user.id
+    )
+
+    .single();
+
+  if (adminError || !admin) {
+
+    await supabase.auth.signOut();
+
+    alert("You are not authorized as an Admin.");
+
+    return;
+
+  }
+
+  // Store admin details
+
   localStorage.setItem(
+
     "admin",
-    JSON.stringify(data)
+
+    JSON.stringify(admin)
+
   );
 
   router.push("/admin/dashboard");
+
 }
 
   return (
