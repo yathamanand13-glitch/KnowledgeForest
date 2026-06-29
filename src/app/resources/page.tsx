@@ -29,6 +29,8 @@ interface Resource {
 
   file_url: string;
 
+  file_type: string;
+
   thumbnail_url: string;
 
   created_at: string;
