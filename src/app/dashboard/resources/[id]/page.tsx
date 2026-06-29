@@ -31,6 +31,8 @@ interface Resource {
 
   file_url: string;
 
+  file_type: string;
+
   thumbnail_url: string;
 
   subject_id: string | null;
